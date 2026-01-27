@@ -1,6 +1,7 @@
 import { parseProxyLinks } from './parsers';
 import { generateMihomoConfig } from './generator/mihomo';
 import { getIndexHtml } from './ui/page';
+import { parseRenameRules, applyRenameRules } from './rename';
 
 export default {
 	async fetch(request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -20,6 +21,10 @@ export default {
 		if (url.pathname === '/convert') {
 			try {
 				let proxyLinks: string;
+
+				// Get rename parameter (URL encoded)
+				const renameParam = url.searchParams.get('rename');
+				const renameRules = renameParam ? parseRenameRules(decodeURIComponent(renameParam)) : [];
 
 				if (request.method === 'POST') {
 					// Direct links mode: receive Base64 encoded content in body
@@ -70,7 +75,12 @@ export default {
 				}
 
 				// Parse proxy links
-				const proxies = parseProxyLinks(proxyLinks);
+				let proxies = parseProxyLinks(proxyLinks);
+
+				// Apply rename rules if provided
+				if (renameRules.length > 0) {
+					proxies = applyRenameRules(proxies, renameRules);
+				}
 
 				// Generate Mihomo config
 				const yaml = generateMihomoConfig(proxies);
@@ -102,3 +112,4 @@ export default {
 		return new Response('Not Found', { status: 404 });
 	},
 } satisfies ExportedHandler<Env>;
+
