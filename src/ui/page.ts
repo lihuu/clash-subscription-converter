@@ -1,5 +1,5 @@
 export function getIndexHtml(baseUrl: string): string {
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -199,6 +199,22 @@ export function getIndexHtml(baseUrl: string): string {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      width: auto;
+    }
+
+    .btn-danger {
+      background: var(--error);
+      border-color: var(--error);
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
     .result-container {
       display: none;
     }
@@ -258,6 +274,97 @@ export function getIndexHtml(baseUrl: string): string {
       flex: 1;
       padding: 10px 14px;
       font-size: 0.85rem;
+    }
+
+    /* Rename Rules Styles */
+    .rename-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .rename-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .rename-title {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .rename-help {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .rename-input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .rename-input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+    }
+
+    .rename-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .rename-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      font-size: 0.85rem;
+    }
+
+    .rename-item-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .rename-pattern {
+      color: var(--accent);
+    }
+
+    .rename-arrow {
+      color: var(--text-secondary);
+    }
+
+    .rename-replacement {
+      color: var(--success);
+    }
+
+    .rename-delete {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .rename-delete:hover {
+      color: var(--error);
+      background: rgba(239, 68, 68, 0.1);
     }
 
     .toast {
@@ -341,6 +448,10 @@ export function getIndexHtml(baseUrl: string): string {
       .card {
         padding: 20px;
       }
+
+      .rename-input-row {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
@@ -373,6 +484,22 @@ export function getIndexHtml(baseUrl: string): string {
         <div class="input-group">
           <label for="rawLinks">或者直接输入代理链接（每行一个）</label>
           <textarea id="rawLinks" placeholder="vmess://...&#10;vless://...&#10;ss://...&#10;trojan://..."></textarea>
+        </div>
+
+        <!-- Rename Rules Section -->
+        <div class="rename-section">
+          <div class="rename-header">
+            <span class="rename-title">重命名规则（可选）</span>
+            <span class="rename-help">正则匹配 → 替换名称</span>
+          </div>
+          
+          <div class="rename-input-row">
+            <input type="text" id="renamePattern" placeholder="匹配规则（支持正则）">
+            <input type="text" id="renameReplacement" placeholder="替换名称">
+            <button class="btn btn-secondary btn-small" id="addRenameBtn">添加</button>
+          </div>
+
+          <div class="rename-list" id="renameList"></div>
         </div>
 
         <button class="btn" id="convertBtn">
@@ -421,6 +548,9 @@ export function getIndexHtml(baseUrl: string): string {
     const errorMsg = document.getElementById('errorMsg');
     const toast = document.getElementById('toast');
 
+    // Rename rules storage
+    let renameRules = [];
+
     function showToast(message, type = 'success') {
       toast.textContent = message;
       toast.className = 'toast visible ' + type;
@@ -445,10 +575,78 @@ export function getIndexHtml(baseUrl: string): string {
       errorMsg.classList.remove('visible');
     }
 
+    // Rename rules management
+    function addRenameRule() {
+      const patternInput = document.getElementById('renamePattern');
+      const replacementInput = document.getElementById('renameReplacement');
+      const pattern = patternInput.value.trim();
+      const replacement = replacementInput.value.trim();
+
+      if (!pattern || !replacement) {
+        showToast('请输入匹配规则和替换名称', 'error');
+        return;
+      }
+
+      // Validate regex
+      try {
+        new RegExp(pattern);
+      } catch (e) {
+        showToast('无效的正则表达式', 'error');
+        return;
+      }
+
+      renameRules.push({ pattern, replacement });
+      renderRenameList();
+      patternInput.value = '';
+      replacementInput.value = '';
+      showToast('规则已添加');
+    }
+
+    function removeRenameRule(index) {
+      renameRules.splice(index, 1);
+      renderRenameList();
+    }
+
+    function renderRenameList() {
+      const list = document.getElementById('renameList');
+      if (renameRules.length === 0) {
+        list.innerHTML = '';
+        return;
+      }
+
+      list.innerHTML = renameRules.map((rule, index) => 
+        '<div class="rename-item">' +
+          '<div class="rename-item-content">' +
+            '<span class="rename-pattern">' + escapeHtml(rule.pattern) + '</span>' +
+            '<span class="rename-arrow">→</span>' +
+            '<span class="rename-replacement">' + escapeHtml(rule.replacement) + '</span>' +
+          '</div>' +
+          '<button class="rename-delete" onclick="removeRenameRule(' + index + ')">✕</button>' +
+        '</div>'
+      ).join('');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function getRenameParam() {
+      if (renameRules.length === 0) return '';
+      return renameRules.map(r => r.pattern + '@' + r.replacement).join('+');
+    }
+
     function generateApiUrl(subUrl) {
       // URL encode then Base64 encode
       const encoded = btoa(encodeURIComponent(subUrl));
-      return baseUrl + '/convert?url=' + encodeURIComponent(encoded);
+      let url = baseUrl + '/convert?url=' + encodeURIComponent(encoded);
+      
+      // Add rename parameter if rules exist
+      const renameParam = getRenameParam();
+      if (renameParam) {
+        url += '&rename=' + encodeURIComponent(renameParam);
+      }
+      
+      return url;
     }
 
     async function convert() {
@@ -465,11 +663,16 @@ export function getIndexHtml(baseUrl: string): string {
 
       try {
         let response;
+        const renameParam = getRenameParam();
         
         if (rawLinks) {
           // Direct links mode - encode the raw links
           const encoded = btoa(unescape(encodeURIComponent(rawLinks)));
-          response = await fetch(baseUrl + '/convert', {
+          let postUrl = baseUrl + '/convert';
+          if (renameParam) {
+            postUrl += '?rename=' + encodeURIComponent(renameParam);
+          }
+          response = await fetch(postUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: encoded
@@ -509,7 +712,19 @@ export function getIndexHtml(baseUrl: string): string {
       }
     }
 
+    // Event listeners
     convertBtn.addEventListener('click', convert);
+    document.getElementById('addRenameBtn').addEventListener('click', addRenameRule);
+
+    document.getElementById('renamePattern').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('renameReplacement').focus();
+      }
+    });
+
+    document.getElementById('renameReplacement').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addRenameRule();
+    });
 
     document.getElementById('copyBtn').addEventListener('click', () => {
       navigator.clipboard.writeText(yamlOutput.textContent);
