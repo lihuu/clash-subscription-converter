@@ -575,6 +575,55 @@ export function getIndexHtml(baseUrl: string): string {
       errorMsg.classList.remove('visible');
     }
 
+    // Apply rename rules to YAML content in-place
+    function applyRenameRulesToYaml(yamlContent, rules) {
+      if (!yamlContent || rules.length === 0) return yamlContent;
+
+      const lines = yamlContent.split('\\n');
+      const usedNames = new Map();
+      
+      return lines.map(line => {
+        // Match lines like "  - name: xxx" or "    name: xxx"
+        const nameMatch = line.match(/^(\\s*-?\\s*name:\\s*)(.+)$/);
+        if (!nameMatch) return line;
+
+        const prefix = nameMatch[1];
+        let currentName = nameMatch[2];
+
+        // Find the first matching rule
+        let newName = currentName;
+        for (const rule of rules) {
+          try {
+            const regex = new RegExp(rule.pattern);
+            if (regex.test(currentName)) {
+              newName = rule.replacement;
+              break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+
+        // Handle duplicate names
+        const baseName = newName;
+        let count = usedNames.get(baseName) || 0;
+        if (count > 0) {
+          newName = baseName + count;
+        }
+        usedNames.set(baseName, count + 1);
+
+        return prefix + newName;
+      }).join('\\n');
+    }
+
+    // Update API link with current rename rules
+    function updateApiLinkWithRename() {
+      const subUrl = subUrlInput.value.trim();
+      if (subUrl && resultContainer.classList.contains('visible')) {
+        apiLink.value = generateApiUrl(subUrl);
+      }
+    }
+
     // Rename rules management
     function addRenameRule() {
       const patternInput = document.getElementById('renamePattern');
@@ -599,7 +648,16 @@ export function getIndexHtml(baseUrl: string): string {
       renderRenameList();
       patternInput.value = '';
       replacementInput.value = '';
-      showToast('规则已添加');
+
+      // If conversion result already exists, apply renaming in-place
+      if (resultContainer.classList.contains('visible') && yamlOutput.textContent) {
+        const updatedYaml = applyRenameRulesToYaml(yamlOutput.textContent, renameRules);
+        yamlOutput.textContent = updatedYaml;
+        updateApiLinkWithRename();
+        showToast('规则已添加并应用到结果');
+      } else {
+        showToast('规则已添加');
+      }
     }
 
     function removeRenameRule(index) {
