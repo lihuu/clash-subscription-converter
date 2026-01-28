@@ -5,6 +5,9 @@
 	"observability": {
 		"enabled": true
 	},
+	"vars": {
+		"DAILY_LIMIT": "500"
+	},
 	"kv_namespaces": [
 		{
 			"binding": "RATE_LIMIT_KV",

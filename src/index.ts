@@ -4,8 +4,8 @@ import { getIndexHtml } from './ui/page';
 import { parseRenameRules, applyRenameRules } from './rename';
 import { checkRateLimit, createRateLimitResponse, addRateLimitHeaders } from './ratelimit';
 
-// Daily request limit for /convert endpoint
-const DAILY_LIMIT = 1000;
+// Default daily request limit for /convert endpoint
+const DEFAULT_DAILY_LIMIT = 500;
 
 export default {
 	async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -26,9 +26,15 @@ export default {
 			// Check rate limit if KV is configured
 			let rateLimitResult = null;
 			if (env.RATE_LIMIT_KV) {
-				rateLimitResult = await checkRateLimit(env.RATE_LIMIT_KV, DAILY_LIMIT);
-				if (!rateLimitResult.allowed) {
-					return createRateLimitResponse(rateLimitResult);
+				try {
+					const dailyLimit = env.DAILY_LIMIT ? parseInt(env.DAILY_LIMIT, 10) : DEFAULT_DAILY_LIMIT;
+					rateLimitResult = await checkRateLimit(env.RATE_LIMIT_KV, dailyLimit);
+					if (!rateLimitResult.allowed) {
+						return createRateLimitResponse(rateLimitResult);
+					}
+				} catch {
+					// KV not available or error occurred, skip rate limiting
+					rateLimitResult = null;
 				}
 			}
 
