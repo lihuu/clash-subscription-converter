@@ -31,6 +31,7 @@ describe('Protocol Parsers', () => {
     });
 
     it('should parse Shadowsocks links correctly (SIP002)', () => {
+        // YWVzLTEyOC1nY206cGFzczE = aes-128-gcm:pass1
         const link = 'ss://YWVzLTEyOC1nY206cGFzczE@1.2.3.4:8888#test-ss';
         const proxy = parseProxyLink(link);
         expect(proxy).not.toBeNull();
@@ -38,6 +39,9 @@ describe('Protocol Parsers', () => {
         expect(proxy?.name).toBe('test-ss');
         if (proxy?.type === 'ss') {
             expect(proxy.cipher).toBe('aes-128-gcm');
+            expect(proxy.password).toBe('pass1');
+            expect(proxy.server).toBe('1.2.3.4');
+            expect(proxy.port).toBe(8888);
         }
     });
 
