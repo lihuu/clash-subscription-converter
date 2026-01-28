@@ -2,9 +2,13 @@ import { parseProxyLinks } from './parsers';
 import { generateMihomoConfig } from './generator/mihomo';
 import { getIndexHtml } from './ui/page';
 import { parseRenameRules, applyRenameRules } from './rename';
+import { checkRateLimit, createRateLimitResponse, addRateLimitHeaders } from './ratelimit';
+
+// Daily request limit for /convert endpoint
+const DAILY_LIMIT = 1000;
 
 export default {
-	async fetch(request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {
+	async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
 		const baseUrl = `${url.protocol}//${url.host}`;
 
@@ -19,6 +23,15 @@ export default {
 
 		// Handle conversion API
 		if (url.pathname === '/convert') {
+			// Check rate limit if KV is configured
+			let rateLimitResult = null;
+			if (env.RATE_LIMIT_KV) {
+				rateLimitResult = await checkRateLimit(env.RATE_LIMIT_KV, DAILY_LIMIT);
+				if (!rateLimitResult.allowed) {
+					return createRateLimitResponse(rateLimitResult);
+				}
+			}
+
 			try {
 				let proxyLinks: string;
 
@@ -85,13 +98,20 @@ export default {
 				// Generate Mihomo config
 				const yaml = generateMihomoConfig(proxies);
 
-				return new Response(yaml, {
+				let response = new Response(yaml, {
 					headers: {
 						'Content-Type': 'text/yaml; charset=utf-8',
 						'Content-Disposition': 'attachment; filename="mihomo-config.yaml"',
 						'Access-Control-Allow-Origin': '*',
 					},
 				});
+
+				// Add rate limit headers if available
+				if (rateLimitResult) {
+					response = addRateLimitHeaders(response, rateLimitResult);
+				}
+
+				return response;
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Unknown error';
 				return new Response(`Conversion error: ${message}`, { status: 500 });

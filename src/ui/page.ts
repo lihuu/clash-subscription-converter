@@ -742,6 +742,16 @@ export function getIndexHtml(baseUrl: string): string {
         }
 
         if (!response.ok) {
+          // Handle rate limit error specially
+          if (response.status === 429) {
+            const data = await response.json();
+            const resetTime = new Date(data.reset);
+            const hours = resetTime.getHours().toString().padStart(2, '0');
+            const minutes = resetTime.getMinutes().toString().padStart(2, '0');
+            showError('请求次数已达今日上限（' + data.limit + ' 次），请在 ' + hours + ':' + minutes + ' 后重试');
+            setLoading(false);
+            return;
+          }
           throw new Error('转换失败: ' + response.statusText);
         }
 
