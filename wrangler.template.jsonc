@@ -1,5 +1,5 @@
 {
-	"name": "mihomo-converter",
+	"name": "clash-subscription-converter",
 	"main": "src/index.ts",
 	"compatibility_date": "2024-12-01",
 	"observability": {
