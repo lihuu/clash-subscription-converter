@@ -1,4 +1,4 @@
-# Mihomo Converter
+# Clash Subscription Converter
 
 [English](#english) | [中文](#中文)
 
@@ -38,8 +38,8 @@ A proxy subscription converter built on Cloudflare Workers that converts various
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/mihomo-converter.git
-cd mihomo-converter
+git clone https://github.com/lihuu/clash-subscription-converter.git
+cd clash-subscription-converter
 ```
 
 2. Install dependencies:
@@ -131,7 +131,7 @@ Convert direct proxy links to Mihomo config.
 ### Project Structure
 
 ```
-mihomo-converter/
+clash-subscription-converter/
 ├── src/
 │   ├── index.ts          # Main worker entry point
 │   ├── types.ts          # TypeScript type definitions
@@ -195,8 +195,8 @@ MIT
 1. 克隆仓库：
 
 ```bash
-git clone https://github.com/your-username/mihomo-converter.git
-cd mihomo-converter
+git clone https://github.com/lihuu/clash-subscription-converter.git
+cd clash-subscription-converter
 ```
 
 2. 安装依赖：
@@ -288,7 +288,7 @@ GET /convert?url=aHR0cHM6Ly9leGFtcGxlLmNvbS9zdWI=
 ### 项目结构
 
 ```
-mihomo-converter/
+clash-subscription-converter/
 ├── src/
 │   ├── index.ts          # Workers 主入口
 │   ├── types.ts          # TypeScript 类型定义
